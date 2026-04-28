@@ -27,25 +27,6 @@
 
 ---
 
-## Структура репозитория
-
-```
-ad-click-ctr-prediction/
-│
-├── Sprint_12_proj - Copy.ipynb   # Основная тетрадка: EDA → обучение → калибровка
-├── 12_save_model.py              # Скрипт сохранения и проверки артефактов (раздел 12)
-├── 11.md                         # Финальный отчёт и выводы (раздел 11)
-├── Project_explanation.md        # Техническое задание проекта
-├── requirements.txt              # Зафиксированные версии зависимостей
-│
-└── artifacts/                    # Создаётся автоматически при запуске 12_save_model.py
-    ├── preprocessor.joblib       # Обученный пайплайн предобработки
-    ├── calibrated_model.joblib   # Откалиброванная финальная модель
-    └── feature_info.joblib       # Метаданные о признаках
-```
-
----
-
 ## Данные
 
 Датасет `ds_s16_ad_click_dataset.csv` — аналитическая витрина событий показа рекламных баннеров.
@@ -83,7 +64,7 @@ ad-click-ctr-prediction/
 - Метод-обёртка: `RFE` с `LogisticRegression` (отбор топ-20 признаков)
 - Удаление одного признака из каждой высококоррелированной пары (14 пар, порог phi_k > 0.9)
 
-**Итоговый набор:** 16 признаков из исходных 39.
+**Итоговый набор:** 19 признаков из исходных 33.
 
 ### 3. Обучение моделей
 | Модель | Описание |
@@ -111,19 +92,12 @@ ad-click-ctr-prediction/
 
 ### Сравнение моделей
 
-| Модель | PR-AUC (CV) | PR-AUC (test) | Brier Score |
-|---|---|---|---|
-| DummyClassifier | ~0.171 | — | — |
-| LogisticRegression (best) | ~0.414 | ~0.414 | ~0.125 |
-| LinearSVC (до калибровки) | ~0.414 | ~0.414 | ~0.215 |
-| **LinearSVC (после калибровки)** | — | — | **~0.125** |
-
-### Метрики калибровки LinearSVC
-
-| | Brier Score | ECE | MCE |
-|---|---|---|---|
-| До калибровки | 0.215 | высокое | ~0.332 |
-| **После калибровки** | **0.125** | **низкое** | **~0.267** |
+| Модель | PR-AUC (test) | Brier Score | ECE | MCE |
+|---|---|---|---|---|
+| DummyClassifier | 0.171 | 0.282 | 0.282 | 0.282 |
+| LogisticRegression (best) | 0.399 | 0.125 | 0.009 | 0.067 |
+| LinearSVC (до калибровки) | 0.398 | 0.215 | 0.296 | 0.332 |
+| **LinearSVC (после калибровки)** | **0.382** | **0.125** | **0.011** | **0.267** |
 
 ### Топ-5 важных признаков
 
@@ -135,7 +109,7 @@ ad-click-ctr-prediction/
 | 4 | `ml_feature_9` | Числовой |
 | 5 | `ml_feature_10` | Числовой |
 
-**Вывод:** финальная откалиброванная модель (LinearSVC + isotonic) превосходит базовый уровень в **2.4 раза** по PR-AUC и имеет Brier Score, сопоставимый с LogisticRegression. Предсказанные вероятности достаточно достоверны для использования в рекламном аукционе.
+**Вывод:** финальная откалиброванная модель (LinearSVC + isotonic) превосходит базовый уровень в **2.3 раза** по PR-AUC и имеет Brier Score, сопоставимый с LogisticRegression. Предсказанные вероятности достаточно достоверны для использования в рекламном аукционе.
 
 ---
 
@@ -165,27 +139,14 @@ pip install -r requirements.txt
 ### 4. Запуск тетрадки
 
 ```bash
-jupyter notebook "Sprint_12_proj - Copy.ipynb"
+jupyter notebook "Sprint_12_proj.ipynb"
 ```
 
 Выполните ячейки последовательно от начала до конца. Разделы 1–10 содержат полный ML-пайплайн.
 
-### 5. Сохранение артефактов (раздел 12)
-
-После выполнения всех ячеек тетрадки вставьте и запустите код из `12_save_model.py` в ячейки раздела 12, либо выполните его как скрипт в том же Python-окружении, где запущена тетрадка:
-
-```bash
-# Только если переменные уже в памяти (например, через %run в Jupyter)
-python 12_save_model.py
-```
-
-Артефакты будут сохранены в папку `artifacts/`.
-
 ---
 
 ## Артефакты модели
-
-После запуска раздела 12 в папке `artifacts/` появятся три файла:
 
 | Файл | Содержимое |
 |---|---|
@@ -224,13 +185,13 @@ print(f"Предсказанный CTR: {ctr_proba[0]:.4f}")
 
 | Категория | Библиотеки |
 |---|---|
-| Данные и анализ | `pandas`, `numpy`, `scipy` |
+| Данные и анализ | `pandas`, `numpy`|
 | Визуализация | `matplotlib`, `seaborn` |
 | Корреляции | `phik` |
 | ML-пайплайн | `scikit-learn` (Pipeline, ColumnTransformer, GridSearchCV) |
 | Предобработка | `StandardScaler`, `OneHotEncoder`, `TargetEncoder`, `SimpleImputer` |
-| Отбор признаков | `VarianceThreshold`, `RFE`, `mutual_info_classif` |
-| Модели | `LogisticRegression`, `LinearSVC`, `DummyClassifier` |
+| Отбор признаков | `VarianceThreshold`, `RFE` |
+| Модели | `LogisticRegression`, `LinearSVC`, `SVC`, `DummyClassifier` |
 | Калибровка | `CalibratedClassifierCV`, `calibration_curve` |
 | Метрики | `average_precision_score`, `brier_score_loss` + кастомные ECE/MCE |
 | Сериализация | `joblib` |
